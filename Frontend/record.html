@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Enter Polling Unit Results</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header">
+    <h1>Delta State Electoral Commision</h1>
+    <ul>
+        <li><a href="index.html">Polling Unit Result</a></li>
+        <li><a href="total.html">Local Government Result</a></li>
+        <li><a href="record.html">Add Polling Unit Result</a></li>
+    </ul>
+  </div>
+  <div class="container">
+    <h2>Enter Polling Unit Results</h2>
+    <form id="result-form">
+
+      <div>
+        <label for="poll-name">Select Polling unit</label>
+        <select name="" id="poll-name">
+          <option value="">- Select -</option>
+        </select>
+      </div>
+
+      <label for="unit-code">Polling Unit Code</label>
+      <input type="text" id="unit-code" name="unitCode" required disabled />
+
+      <div class="party-group" id="party">
+      </div>
+
+      <button type="submit">Submit Results</button>
+    </form>
+  </div>
+
+  <script>
+    const select = document.getElementById('poll-name');
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const urls = [
+        'https://electionresult-demo.onrender.com/available-pu',
+        'https://electionresult-demo.onrender.com/parties'
+      ]
+      const responses = await Promise.all(urls.map(url => fetch(url)));
+      const data = await Promise.all(responses.map(res => res.json()));
+      const [pollingUnits, parties] = data;
+      // const pollingUnits = await response.json();
+        pollingUnits[0].forEach(unit => {
+            select.innerHTML += `<option value="${unit.uniqueid}">${unit.polling_unit_name}</option>`;
+        });
+
+        parties[0].forEach(party => {
+          document.getElementById('party').innerHTML += `
+            <div>
+              <label for='${party.partyid}'>${party.partyname} votes</label>
+              <input type='number' id='${party.partyid}'>
+            </div>
+          `;
+        })
+    })
+
+    select.addEventListener('change',() => {
+      document.getElementById('unit-code').value = select.value 
+    })
+
+
+    document.getElementById('result-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      let status = 'ok';
+
+      const results = [
+        { party: 'PDP', score: parseInt(document.getElementById('PDP').value) },
+        { party: 'DPP', score: parseInt(document.getElementById('DPP').value) },
+        { party: 'ACN', score: parseInt(document.getElementById('ACN').value) },
+        { party: 'PPA', score: parseInt(document.getElementById('PPA').value) },
+        { party: 'CDC', score: parseInt(document.getElementById('CDC').value) },
+        { party: 'JP', score: parseInt(document.getElementById('JP').value) },
+        { party: 'ANPP', score: parseInt(document.getElementById('ANPP').value) },
+        { party: 'LABOUR', score: parseInt(document.getElementById('LABOUR').value) },
+        { party: 'CPP', score: parseInt(document.getElementById('CPP').value) }
+      ];
+
+      const now = new Date();
+      const pad = (n) => n.toString().padStart(2, '0');
+      const formattedTimestamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+      for (const result of results) {
+        const data = {
+          pollingUnitId: document.getElementById('unit-code').value,
+          party: result.party,
+          score: result.score,
+          user: 'Dave',
+          date: formattedTimestamp
+        };
+
+        try {
+          const response = await fetch('https://electionresult-demo.onrender.com/polling-units', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+
+          if (!response.ok) {
+            status = 'failed';
+            break;
+          }
+        } catch (err) {
+          console.error('Error submitting result for', result.party, err);
+          status = 'error';
+          break;
+        }
+      }
+
+      if (status === 'ok') {
+        alert('Results submitted successfully!');
+        document.getElementById('result-form').reset();
+        location.reload();
+      } else if (status === 'failed') {
+        alert('Failed to submit results. Try again later.');
+      } else if (status === 'error') {
+        alert('An unexpected error occurred.');
+      }
+    });
+
+  </script>
+</body>
+</html>
