@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Local Government Details</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Delta State Electoral Commision</h1>
+        <ul>
+            <li><a href="index.html">Polling Unit Result</a></li>
+            <li><a href="total.html">Local Government Result</a></li>
+            <li><a href="record.html">Add Polling Unit Result</a></li>
+        </ul>
+    </div>
+  <div class="container">
+    <h2>Local Government Details</h2>
+
+    <div class="find">
+        <div class="select-field">
+            <label for="">Select a local government</label>
+            <div>
+                <select name="" id="select">
+                    <option value="0">- Select -</option>
+                </select>
+
+                <button id="button">View Result</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="loader" id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="main">
+        <div class="info">
+          <label>Local Government Name:</label>
+          <span id="lga-name">[Polling Unit Name]</span>
+    
+          <label>Local Government Code:</label>
+          <span id="lga-code">[Polling Unit Code]</span>
+    
+          <label>LGA:</label>
+          <span id="ga-name">[LGA Name]</span>
+    
+        </div>
+    
+        <div class="results">
+          <h3>Results</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Party</th>
+                <th>Total Votes</th>
+              </tr>
+            </thead>
+            <tbody id="results-table">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+    </div>
+
+  </div>
+
+  <script>
+
+    const button = document.getElementById("button");
+    const select = document.getElementById("select");  
+    const resultsTable = document.getElementById("results-table"); 
+
+    // Sample script - replace this with actual data fetching logic
+    document.addEventListener("DOMContentLoaded", async () => {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("main").style.display = "none";
+
+        const response = await fetch('https://electionresult-demo.onrender.com/local-governments');
+        const lgas = await response.json();
+        // console.log(lgas);
+        lgas[0].forEach(lga => {
+            select.innerHTML += `<option value="${lga.lga_id}">${lga.lga_name}</option>`;
+        });
+    });
+
+    button.addEventListener('click', async () => {
+        document.getElementById("loader").style.display = "flex";
+        document.getElementById("main").style.display = "none";
+        const allArray = [] ;
+        let mergedArray
+
+        setTimeout(async () => {
+
+            const option = document.querySelector('select').value;
+            const urls = [
+                `https://electionresult-demo.onrender.com/local-governments/${option}`,
+                `https://electionresult-demo.onrender.com/local-governments/${option}/results`
+            ];
+
+            const responses = await Promise.all(urls.map(url => fetch(url)));
+            const data = await Promise.all(responses.map(res => res.json()));
+            const [details, result] = data;
+
+            // console.log( result);
+
+            document.getElementById("lga-name").textContent = details[0][0].lga_name;
+            document.getElementById("lga-code").textContent = details[0][0].lga_id;
+
+
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("main").style.display = "block";
+
+            resultsTable.innerHTML = ''; // Clear previous results
+
+            // console.log(result.length);
+
+            result.forEach(res => {
+               res.results[0].forEach(r => {
+                  allArray.push({name: r.party_abbreviation, score: r.party_score});
+                });
+            });
+
+            mergedArray = allArray.reduce((acc, curr) => {
+                if (acc[curr.name]) {
+                    acc[curr.name].score += curr.score;
+                } else {
+                    acc[curr.name] = { name: curr.name, score: curr.score };
+                }
+                return acc;
+            }, {});
+
+            const finalArray = Object.values(mergedArray);
+
+            finalArray.forEach(res => {
+                resultsTable.innerHTML += `<tr>
+                    <td>${res.name}</td>
+                    <td>${res.score}</td>
+                </tr>`;
+            });
+
+        }, 2000); // Simulate a delay for fetching data
+
+
+    });
+  </script>
+</body>
+</html>
